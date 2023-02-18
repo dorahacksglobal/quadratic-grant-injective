@@ -523,7 +523,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "qg-injectvie"
+name = "quadratic-grant"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",

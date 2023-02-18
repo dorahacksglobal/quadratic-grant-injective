@@ -8,7 +8,7 @@ use crate::msg::{ExecuteMsg, GetCountResponse, InstantiateMsg, QueryMsg};
 use crate::state::{State, STATE};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:qg-injectvie";
+const CONTRACT_NAME: &str = "crates.io:quadratic-grant";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
