@@ -36,8 +36,14 @@ library = []
 optimize = """docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/rust-optimizer:0.12.10
+  cosmwasm/rust-optimizer-arm64:0.12.11
 """
+install_injectived = """docker run --name="injective-core-staging" \
+  -v="$(pwd)"/artifacts:/var/artifacts \
+  --entrypoint=sh public.ecr.aws/l9h3g6c6/injective-core:staging \
+  -c "tail -F anything"
+"""
+injectived = "docker exec -it injective-core-staging sh"
 
 [dependencies]
 cosmwasm-schema = "1.1.3"
@@ -48,6 +54,9 @@ cw2 = "1.0.1"
 schemars = "0.8.10"
 serde = { version = "1.0.145", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.31" }
+sylvia = "0.2.1"
+cw-utils = "0.16"
 
 [dev-dependencies]
 cw-multi-test = "0.16.2"
+anyhow = "1"

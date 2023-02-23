@@ -1,8 +1,42 @@
 pub mod contract;
-mod error;
-pub mod helpers;
-pub mod integration_tests;
-pub mod msg;
-pub mod state;
+pub mod error;
+pub mod responses;
 
-pub use crate::error::ContractError;
+#[cfg(test)]
+mod multitest;
+
+#[cfg(not(feature = "library"))]
+pub mod entry_point {
+    use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+    
+    use crate::error::ContractError;
+    use crate::contract::{ContractExecMsg, ContractQueryMsg, AdminContract, InstantiateMsg};
+    
+    const CONTRACT: AdminContract = AdminContract::new();
+    
+    #[entry_point]
+    pub fn instantiate(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        msg: InstantiateMsg,
+    ) -> Result<Response, ContractError> {
+        msg.dispatch(&CONTRACT, (deps, env, info))
+    }
+    
+    #[entry_point]
+    pub fn query(deps: Deps, env: Env, msg: ContractQueryMsg) -> Result<Binary, ContractError> {
+        msg.dispatch(&CONTRACT, (deps, env))
+    }
+    
+    #[entry_point]
+    pub fn execute(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        msg: ContractExecMsg,
+    ) -> Result<Response, ContractError> {
+        msg.dispatch(&CONTRACT, (deps, env, info))
+    }
+
+}

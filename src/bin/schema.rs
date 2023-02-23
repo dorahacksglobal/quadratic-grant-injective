@@ -1,11 +1,10 @@
 use cosmwasm_schema::write_api;
-
-use quadratic_grant::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use quadratic_grant::contract::{ContractExecMsg, ContractQueryMsg, InstantiateMsg};
 
 fn main() {
     write_api! {
         instantiate: InstantiateMsg,
-        execute: ExecuteMsg,
-        query: QueryMsg,
+        execute: ContractExecMsg,
+        query: ContractQueryMsg,
     }
 }

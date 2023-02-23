@@ -1,156 +1,196 @@
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw2::set_contract_version;
-
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, GetCountResponse, InstantiateMsg, QueryMsg};
-use crate::state::{State, STATE};
+use crate::responses::AdminListResp;
+use cosmwasm_std::{
+    coins, Addr, BankMsg, Deps, DepsMut, Empty, Env, Event, MessageInfo, Order, Response, StdError,
+    StdResult,
+};
+use cw_storage_plus::{Item, Map};
+use schemars;
+use sylvia::contract;
 
-// version info for migration info
-const CONTRACT_NAME: &str = "crates.io:quadratic-grant";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    msg: InstantiateMsg,
-) -> Result<Response, ContractError> {
-    let state = State {
-        count: msg.count,
-        owner: info.sender.clone(),
-    };
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    STATE.save(deps.storage, &state)?;
-
-    Ok(Response::new()
-        .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender)
-        .add_attribute("count", msg.count.to_string()))
+pub struct AdminContract<'a> {
+    pub(crate) admins: Map<'a, &'a Addr, Empty>,
+    pub(crate) donation_denom: Item<'a, String>,
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    match msg {
-        ExecuteMsg::Increment {} => execute::increment(deps),
-        ExecuteMsg::Reset { count } => execute::reset(deps, info, count),
-    }
-}
-
-pub mod execute {
-    use super::*;
-
-    pub fn increment(deps: DepsMut) -> Result<Response, ContractError> {
-        STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-            state.count += 1;
-            Ok(state)
-        })?;
-
-        Ok(Response::new().add_attribute("action", "increment"))
+#[contract]
+impl AdminContract<'_> {
+    pub const fn new() -> Self {
+        Self {
+            admins: Map::new("admins"),
+            donation_denom: Item::new("donation_denom"),
+        }
     }
 
-    pub fn reset(deps: DepsMut, info: MessageInfo, count: i32) -> Result<Response, ContractError> {
-        STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-            if info.sender != state.owner {
-                return Err(ContractError::Unauthorized {});
-            }
-            state.count = count;
-            Ok(state)
-        })?;
-        Ok(Response::new().add_attribute("action", "reset"))
+    #[msg(instantiate)]
+    pub fn instantiate(
+        &self,
+        ctx: (DepsMut, Env, MessageInfo),
+        admins: Vec<String>,
+        donation_denom: String,
+    ) -> Result<Response, ContractError> {
+        let (deps, _, _) = ctx;
+
+        for admin in admins {
+            let admin = deps.api.addr_validate(&admin)?;
+            self.admins.save(deps.storage, &admin, &Empty {})?;
+        }
+        self.donation_denom.save(deps.storage, &donation_denom)?;
+        Ok(Response::new())
     }
-}
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {
-        QueryMsg::GetCount {} => to_binary(&query::count(deps)?),
+    #[msg(query)]
+    pub fn admin_list(&self, ctx: (Deps, Env)) -> StdResult<AdminListResp> {
+        let (deps, _) = ctx;
+
+        let admins: Result<_, _> = self
+            .admins
+            .keys(deps.storage, None, None, Order::Ascending)
+            .map(|addr| addr.map(String::from))
+            .collect();
+
+        Ok(AdminListResp { admins: admins? })
     }
-}
 
-pub mod query {
-    use super::*;
+    #[msg(exec)]
+    pub fn add_member(
+        &self,
+        ctx: (DepsMut, Env, MessageInfo),
+        admin: String,
+    ) -> Result<Response, ContractError> {
+        let (deps, _, info) = ctx;
 
-    pub fn count(deps: Deps) -> StdResult<GetCountResponse> {
-        let state = STATE.load(deps.storage)?;
-        Ok(GetCountResponse { count: state.count })
+        if !self.admins.has(deps.storage, &info.sender) {
+            return Err(ContractError::Unauthorized {
+                sender: info.sender,
+            });
+        }
+
+        let admin = deps.api.addr_validate(&admin)?;
+        if self.admins.has(deps.storage, &admin) {
+            return Err(ContractError::NoDupAddress { address: admin });
+        }
+
+        self.admins.save(deps.storage, &admin, &Empty {})?;
+
+        let resp = Response::new()
+            .add_attribute("action", "add_member")
+            .add_event(Event::new("admin_added").add_attribute("addr", admin));
+        Ok(resp)
+    }
+
+    #[msg(exec)]
+    pub fn donate(&self, ctx: (DepsMut, Env, MessageInfo)) -> Result<Response, ContractError> {
+        let (deps, _, info) = ctx;
+
+        let denom = self.donation_denom.load(deps.storage)?;
+        let admins_len = self
+            .admins
+            .keys(deps.storage, None, None, Order::Ascending)
+            .filter_map(|admin| admin.ok())
+            .count();
+
+        let donation = cw_utils::must_pay(&info, &denom)
+            .map_err(|err| StdError::generic_err(err.to_string()))?
+            .u128();
+
+        let donation_per_admin = donation / (admins_len as u128);
+
+        let admins = self
+            .admins
+            .keys(deps.storage, None, None, Order::Ascending)
+            .filter_map(|admin| admin.ok());
+
+        let messages = admins.into_iter().map(|admin| BankMsg::Send {
+            to_address: admin.to_string(),
+            amount: coins(donation_per_admin, &denom),
+        });
+
+        let resp = Response::new()
+            .add_messages(messages)
+            .add_attribute("action", "donate")
+            .add_attribute("amount", donation.to_string())
+            .add_attribute("per_admin", donation_per_admin.to_string());
+
+        Ok(resp)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::entry_point::{execute, instantiate, query};
+    use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coins, from_binary};
+
+    use super::*;
 
     #[test]
-    fn proper_initialization() {
+    fn admin_list_query() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
 
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(1000, "earth"));
+        instantiate(
+            deps.as_mut(),
+            env.clone(),
+            mock_info("sender", &[]),
+            InstantiateMsg {
+                admins: vec!["admin1".to_owned(), "admin2".to_owned()],
+                donation_denom: "uusd".to_owned(),
+            },
+        )
+        .unwrap();
 
-        // we can just call .unwrap() to assert this was a success
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        // it worked, let's query the state
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: GetCountResponse = from_binary(&res).unwrap();
-        assert_eq!(17, value.count);
+        let msg = QueryMsg::AdminList {};
+        let resp = query(deps.as_ref(), env, ContractQueryMsg::AdminContract(msg)).unwrap();
+        let resp: AdminListResp = from_binary(&resp).unwrap();
+        assert_eq!(
+            resp,
+            AdminListResp {
+                admins: vec!["admin1".to_owned(), "admin2".to_owned()],
+            }
+        );
     }
 
     #[test]
-    fn increment() {
+    fn add_member() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
 
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(2, "token"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        instantiate(
+            deps.as_mut(),
+            env.clone(),
+            mock_info("sender", &[]),
+            InstantiateMsg {
+                admins: vec!["admin1".to_owned(), "admin2".to_owned()],
+                donation_denom: "uusd".to_owned(),
+            },
+        )
+        .unwrap();
 
-        // beneficiary can release it
-        let info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::Increment {};
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let info = mock_info("admin1", &[]);
+        let msg = ExecMsg::AddMember {
+            admin: "admin3".to_owned(),
+        };
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info,
+            ContractExecMsg::AdminContract(msg),
+        )
+        .unwrap();
 
-        // should increase counter by 1
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: GetCountResponse = from_binary(&res).unwrap();
-        assert_eq!(18, value.count);
-    }
-
-    #[test]
-    fn reset() {
-        let mut deps = mock_dependencies();
-
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(2, "token"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-        // beneficiary can release it
-        let unauth_info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::Reset { count: 5 };
-        let res = execute(deps.as_mut(), mock_env(), unauth_info, msg);
-        match res {
-            Err(ContractError::Unauthorized {}) => {}
-            _ => panic!("Must return unauthorized error"),
-        }
-
-        // only the original creator can reset the counter
-        let auth_info = mock_info("creator", &coins(2, "token"));
-        let msg = ExecuteMsg::Reset { count: 5 };
-        let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
-
-        // should now be 5
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: GetCountResponse = from_binary(&res).unwrap();
-        assert_eq!(5, value.count);
+        let msg = QueryMsg::AdminList {};
+        let resp = query(deps.as_ref(), env, ContractQueryMsg::AdminContract(msg)).unwrap();
+        let resp: AdminListResp = from_binary(&resp).unwrap();
+        assert_eq!(
+            resp,
+            AdminListResp {
+                admins: vec![
+                    "admin1".to_owned(),
+                    "admin2".to_owned(),
+                    "admin3".to_owned()
+                ],
+            }
+        );
     }
 }
