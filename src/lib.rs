@@ -10,9 +10,9 @@ pub mod entry_point {
     use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
     
     use crate::error::ContractError;
-    use crate::contract::{ContractExecMsg, ContractQueryMsg, AdminContract, InstantiateMsg};
+    use crate::contract::{ContractExecMsg, ContractQueryMsg, QGContract, InstantiateMsg};
     
-    const CONTRACT: AdminContract = AdminContract::new();
+    const CONTRACT: QGContract = QGContract::new();
     
     #[entry_point]
     pub fn instantiate(

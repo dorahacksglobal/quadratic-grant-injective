@@ -1,3 +1,6 @@
+//! Admin contract
+//! This contract allows to add members to the admin list and to donate funds to the admins.
+
 use crate::error::ContractError;
 use crate::responses::AdminListResp;
 use cosmwasm_std::{
@@ -8,13 +11,13 @@ use cw_storage_plus::{Item, Map};
 use schemars;
 use sylvia::contract;
 
-pub struct AdminContract<'a> {
+pub struct QGContract<'a> {
     pub(crate) admins: Map<'a, &'a Addr, Empty>,
     pub(crate) donation_denom: Item<'a, String>,
 }
 
 #[contract]
-impl AdminContract<'_> {
+impl QGContract<'_> {
     pub const fn new() -> Self {
         Self {
             admins: Map::new("admins"),
@@ -141,7 +144,7 @@ mod tests {
         .unwrap();
 
         let msg = QueryMsg::AdminList {};
-        let resp = query(deps.as_ref(), env, ContractQueryMsg::AdminContract(msg)).unwrap();
+        let resp = query(deps.as_ref(), env, ContractQueryMsg::QGContract(msg)).unwrap();
         let resp: AdminListResp = from_binary(&resp).unwrap();
         assert_eq!(
             resp,
@@ -175,12 +178,12 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             info,
-            ContractExecMsg::AdminContract(msg),
+            ContractExecMsg::QGContract(msg),
         )
         .unwrap();
 
         let msg = QueryMsg::AdminList {};
-        let resp = query(deps.as_ref(), env, ContractQueryMsg::AdminContract(msg)).unwrap();
+        let resp = query(deps.as_ref(), env, ContractQueryMsg::QGContract(msg)).unwrap();
         let resp: AdminListResp = from_binary(&resp).unwrap();
         assert_eq!(
             resp,

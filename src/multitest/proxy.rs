@@ -2,17 +2,17 @@ use cosmwasm_std::{Addr, StdResult, Coin};
 use cw_multi_test::{App, AppResponse, Executor};
 
 use crate::{
-    contract::{AdminContract, ExecMsg, InstantiateMsg, QueryMsg},
+    contract::{QGContract, ExecMsg, InstantiateMsg, QueryMsg},
     error::ContractError,
     responses::AdminListResp,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct AdminContractCodeId(u64);
+pub struct QGContractCodeId(u64);
 
-impl AdminContractCodeId {
+impl QGContractCodeId {
     pub fn store_code(app: &mut App) -> Self {
-        let code_id = app.store_code(Box::new(AdminContract::new()));
+        let code_id = app.store_code(Box::new(QGContract::new()));
         Self(code_id)
     }
 
@@ -25,19 +25,19 @@ impl AdminContractCodeId {
         donation_denom: String,
         label: &str,
         admin: Option<String>,
-    ) -> StdResult<AdminContractProxy> {
+    ) -> StdResult<QGContractProxy> {
         let msg = InstantiateMsg { admins, donation_denom};
 
         app.instantiate_contract(self.0, sender.clone(), &msg, &[], label, admin)
             .map_err(|err| err.downcast().unwrap())
-            .map(AdminContractProxy)
+            .map(QGContractProxy)
     }
 }
 
 #[derive(Debug)]
-pub struct AdminContractProxy(Addr);
+pub struct QGContractProxy(Addr);
 
-impl AdminContractProxy {
+impl QGContractProxy {
     pub fn addr(&self) -> &Addr {
         &self.0
     }

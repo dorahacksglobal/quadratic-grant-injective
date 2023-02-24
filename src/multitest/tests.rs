@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, coins};
 use cw_multi_test::App;
 
 use crate::{
-    error::ContractError, multitest::proxy::AdminContractCodeId, responses::AdminListResp,
+    error::ContractError, multitest::proxy::QGContractCodeId, responses::AdminListResp,
 };
 
 const ATOM: &str = "atom";
@@ -18,7 +18,7 @@ fn basic() {
         "admin3".to_owned(),
     ];
 
-    let code_id = AdminContractCodeId::store_code(&mut app);
+    let code_id = QGContractCodeId::store_code(&mut app);
 
     let contract = code_id
         .instantiate(
@@ -44,7 +44,7 @@ fn unathorized() {
     let admin2 = Addr::unchecked("admin2");
     let admin3 = Addr::unchecked("admin3");
 
-    let code_id = AdminContractCodeId::store_code(&mut app);
+    let code_id = QGContractCodeId::store_code(&mut app);
 
     let contract = code_id
         .instantiate(
@@ -90,7 +90,7 @@ fn no_dup() {
     let admin1 = Addr::unchecked("admin1");
     let admin2 = Addr::unchecked("admin2");
 
-    let code_id = AdminContractCodeId::store_code(&mut app);
+    let code_id = QGContractCodeId::store_code(&mut app);
 
     let contract = code_id
         .instantiate(
@@ -141,7 +141,7 @@ fn donate() {
             .unwrap()
     });
 
-    let code_id = AdminContractCodeId::store_code(&mut app);
+    let code_id = QGContractCodeId::store_code(&mut app);
 
     let contract = code_id
         .instantiate(

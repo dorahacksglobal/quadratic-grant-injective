@@ -2,12 +2,12 @@ use anyhow::{bail, Result as AnyResult};
 use cosmwasm_std::{from_slice, Empty};
 use cw_multi_test::Contract;
 
-use crate::contract::{AdminContract, ContractExecMsg, ContractQueryMsg, InstantiateMsg};
+use crate::contract::{QGContract, ContractExecMsg, ContractQueryMsg, InstantiateMsg};
 
 mod proxy;
 mod tests;
 
-impl Contract<Empty> for AdminContract<'_> {
+impl Contract<Empty> for QGContract<'_> {
     fn execute(
         &self,
         deps: cosmwasm_std::DepsMut<Empty>,
