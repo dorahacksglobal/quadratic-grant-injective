@@ -1,6 +1,8 @@
 pub mod contract;
 pub mod error;
 pub mod responses;
+pub mod state;
+pub mod helper;
 
 #[cfg(test)]
 mod multitest;

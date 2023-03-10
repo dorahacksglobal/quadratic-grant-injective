@@ -6,7 +6,6 @@ use thiserror::Error;
 pub enum ContractError {
     // Add any other custom errors you like here.
     // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
-    
     #[error("{0}")]
     Std(#[from] StdError),
 
@@ -18,4 +17,19 @@ pub enum ContractError {
 
     #[error("{address} is already an admin")]
     NoDupAddress { address: Addr },
+
+    #[error("{round_id} is not in voting status")]
+    RoundNotInVoting { round_id: u64 },
+
+    #[error("{round_id} is not ended")]
+    RoundNotEnded { round_id: u64 },
+
+    #[error("{round_id} does not exist")]
+    RoundNotExist { round_id: u64 },
+
+    #[error("expected {expected} but got {actual}")]
+    InvalidAmount { expected: u128, actual: u128 },
+
+    #[error("Invalid signature")]
+    InvalidSignature,
 }

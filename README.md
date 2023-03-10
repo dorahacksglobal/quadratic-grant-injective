@@ -49,6 +49,26 @@ After withdraw_grants be called, the administrator can withdraw the correspondin
 
 ## Publish
 
+build
+
+```
+cargo wasm
+```
+
+optimize
+
+```
+cargo run-script optimize
+```
+
+check
+
+```
+cargo run-script check
+```
+
+deploy
+
 ```
 injectived tx wasm store /var/artifacts/quadratic_grant-aarch64.wasm \
 --from=$(echo $INJ_ADDRESS) \

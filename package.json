@@ -1,0 +1,23 @@
+{
+  "name": "quadratic-grant-injective",
+  "version": "1.0.0",
+  "description": "A quadratic funding implementation on Injetcive. This implementation distributes matching funds based on quadratic voting and includes [grant distribution algorithm](https://github.com/dorahacksglobal/qf-grant-contract/blob/bsc-long-term/grant-distribution-algorithm-en.md) (also called \"quadratic funding tax\") to ensure fairer distribution.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dorahacksglobal/quadratic-grant-injective.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dorahacksglobal/quadratic-grant-injective/issues"
+  },
+  "homepage": "https://github.com/dorahacksglobal/quadratic-grant-injective#readme",
+  "dependencies": {
+    "@injectivelabs/networks": "^1.0.95",
+    "@injectivelabs/sdk-ts": "^1.0.470"
+  }
+}
