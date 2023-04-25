@@ -28,13 +28,13 @@ const contractAddress = "inj1m573ael4haga2w0vgawrc7mdt2g994tml07wgp";
 
 const network = Network.TestnetK8s;
 const endpoints = getNetworkEndpoints(network);
-console.log(endpoints)
+console.log(endpoints);
 
 const chainGrpcBankApi = new ChainGrpcBankApi(endpoints.grpc);
 const chainRestAuthApi = new ChainRestAuthApi(endpoints.rest);
 const chainGrpcWasmApi = new ChainGrpcWasmApi(endpoints.grpc);
 const chainRestTendermintApi = new ChainRestTendermintApi(endpoints.rest);
-const indexerGrpcExplorerApi = new IndexerRestExplorerApi(endpoints.indexer)
+const indexerGrpcExplorerApi = new IndexerRestExplorerApi(endpoints.indexer);
 
 async function main() {
   // await account(chainGrpcBankApi, chainRestAuthApi);
@@ -45,10 +45,13 @@ async function main() {
   //   contractAddress
   // );
   // console.log({ contractInfo });
-  const contractTx = await indexerGrpcExplorerApi.fetchContractTransactions({contractAddress, params:{
-    limit: 10,
-  }})
-  console.log(contractTx)
+  const contractTx = await indexerGrpcExplorerApi.fetchContractTransactions({
+    contractAddress,
+    params: {
+      limit: 10,
+    },
+  });
+  console.log(contractTx);
 
   let txExecHash: TxResponse;
 
@@ -63,30 +66,44 @@ async function main() {
   // });
   // console.log("start_round: ", txExecHash.txHash);
 
-  // // Batch Upload Projects
+  // Batch Upload Projects
   // txExecHash = await execute({
-  //   batch_upload_project: { round_id: 1, owner_addresses: ["1", "2", "3"] },
+  //   batch_upload_project: { round_id: 1, owner_addresses: ["3", "4", "5", "6", "7", "8", "9", "10"] },
   // });
   // console.log("batch_upload_project: ", txExecHash.txHash);
 
-  // // Weighted Batch Vote 1
-  // txExecHash = await execute({
-  //   weighted_batch_vote: {
-  //     round_id: 1,
-  //     project_votes: [[1, "160000"]],
-  //     vcdora: 0,
+  // Weighted Batch Vote 1
+  // txExecHash = await execute(
+  //   {
+  //     weighted_batch_vote: {
+  //       round_id: 1,
+  //       project_ids: [1],
+  //       amounts: ["160000"],
+  //       vcdora: 0,
+  //       timestamp: 0,
+  //       recid: 0,
+  //       sig: [],
+  //     },
   //   },
-  // });
+  //   { denom: "inj", amount: "160000" }
+  // );
   // console.log("weighted_batch_vote1: ", txExecHash.txHash);
 
   // // Weighted Batch Vote 2
-  // txExecHash = await execute({
-  //   weighted_batch_vote: {
-  //     round_id: 1,
-  //     project_votes: [[1, "90000"]],
-  //     vcdora: 1,
+  // txExecHash = await execute(
+  //   {
+  //     weighted_batch_vote: {
+  //       round_id: 1,
+  //       project_ids: [1],
+  //       amounts: ["90000"],
+  //       vcdora: 0,
+  //       timestamp: 0,
+  //       recid: 0,
+  //       sig: [],
+  //     },
   //   },
-  // });
+  //   { denom: "inj", amount: "90000" }
+  // );
   // console.log("weighted_batch_vote2: ", txExecHash.txHash);
 
   // // Weighted Batch Vote 3
@@ -99,8 +116,8 @@ async function main() {
   // });
   // console.log("weighted_batch_vote3: ", txExecHash.txHash);
 
-  // const roundInfo = await query({"round":{"round_id": 1}})
-  // console.log("roundInfo: ", roundInfo);
+  const roundInfo = await query({ round: { round_id: 1 } });
+  console.log("roundInfo: ", roundInfo);
 }
 
 async function account(
@@ -152,7 +169,7 @@ async function sendCoin() {
   console.log({ txHash });
 }
 
-async function query(msg:object) {
+async function query(msg: object) {
   // `injectived query wasm contract-state smart`
   const queryData = Buffer.from(JSON.stringify(msg)).toString("base64");
   const wasmQuery = await chainGrpcWasmApi.fetchSmartContractState(
@@ -160,13 +177,20 @@ async function query(msg:object) {
     queryData
   );
   const resp = Buffer.from(wasmQuery.data as String, "base64").toString();
-  return JSON.parse(resp)
+  return JSON.parse(resp);
 }
 
-async function execute(msg: object) {
+async function execute(
+  msg: object,
+  funds?: {
+    denom: string;
+    amount: string;
+  }
+) {
   const msgExec = MsgExecuteContract.fromJSON({
     sender: injectiveAddress,
     contractAddress,
+    funds,
     msg,
   });
   const txExecHash = await new MsgBroadcasterWithPk({

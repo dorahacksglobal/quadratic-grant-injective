@@ -4,17 +4,16 @@
 //! License: Apache-2.0
 
 use cosmwasm_std::{
-    coins, Addr, BankMsg, Deps, DepsMut, Empty, Env, Event, HexBinary, MessageInfo, Order,
-    Response, StdError, StdResult, Uint128,
+    coins, Addr, BankMsg, Deps, DepsMut, Empty, Env, Event, MessageInfo, Order, Response, StdError,
+    StdResult, Uint128,
 };
 use cw_storage_plus::{Item, Map};
 use schemars;
 use sylvia::contract;
-use tiny_keccak::{Hasher, Keccak};
 
 use crate::{
     error::ContractError,
-    helper::math,
+    helper::{math, signature},
     responses::AdminListResp,
     state::{Project, ProjectStatus, Round, RoundStatus},
 };
@@ -233,7 +232,7 @@ impl QGContract<'_> {
         recid: u8,
         sig: Vec<u8>,
     ) -> Result<Response, ContractError> {
-        let (deps, _, info) = ctx;
+        let (deps, env, info) = ctx;
 
         let mut round = self.rounds.load(deps.storage, &round_id.to_string())?;
 
@@ -242,34 +241,23 @@ impl QGContract<'_> {
         }
 
         if round.pubkey.len() != 0 {
-            let mut msg = Vec::new();
-            let addr_bytes = deps.api.addr_canonicalize(info.sender.as_str())?;
-            msg.extend_from_slice(&addr_bytes.as_slice());
-            msg.extend_from_slice(&round_id.to_le_bytes());
-            let mut project_ids_bytes = Vec::new();
-            project_ids.iter().for_each(|id| {
-                project_ids_bytes.extend_from_slice(&id.to_le_bytes());
-            });
-            msg.extend_from_slice(&project_ids_bytes);
-            let mut amounts_bytes = Vec::new();
-            amounts.iter().for_each(|amount| {
-                amounts_bytes.extend_from_slice(&amount.to_le_bytes());
-            });
-            msg.extend_from_slice(&amounts_bytes);
-            msg.extend_from_slice(&vcdora.to_le_bytes());
-            msg.extend_from_slice(&timestamp.to_le_bytes());
+            // buidl msg
+            let addr = deps.api.addr_canonicalize(info.sender.as_str()).unwrap();
+            let addr_bytes = addr.as_slice();
+            let msg = signature::build_msg(
+                addr_bytes,
+                round_id,
+                &project_ids,
+                &amounts,
+                vcdora,
+                timestamp,
+            );
 
-            let mut keccak256 = Keccak::v256();
-            keccak256.update(msg.as_slice());
-
-            let mut hash = [0u8; 32];
-            keccak256.finalize(&mut hash);
-
-            let signature = HexBinary::from(sig);
-            let pubkey = deps
-                .api
-                .secp256k1_recover_pubkey(&hash, signature.as_slice(), recid)
-                .unwrap_or_default();
+            // verify signature
+            if env.block.time.seconds() > timestamp + 60 * 60 {
+                return Err(ContractError::InvalidSignatureTimestamp {});
+            }
+            let pubkey = signature::verify(deps.as_ref(), msg, sig, recid);
             if pubkey != round.pubkey {
                 return Err(ContractError::InvalidSignature {});
             }

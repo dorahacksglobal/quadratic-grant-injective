@@ -32,4 +32,7 @@ pub enum ContractError {
 
     #[error("Invalid signature")]
     InvalidSignature,
+
+    #[error("Invalid signature timestamp")]
+    InvalidSignatureTimestamp,
 }
