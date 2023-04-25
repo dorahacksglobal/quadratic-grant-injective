@@ -257,7 +257,7 @@ impl QGContract<'_> {
             if env.block.time.seconds() > timestamp + 60 * 60 {
                 return Err(ContractError::InvalidSignatureTimestamp {});
             }
-            let pubkey = signature::verify(deps.as_ref(), msg, sig, recid);
+            let pubkey = signature::recover_pubkey(deps.as_ref(), msg, sig, recid);
             if pubkey != round.pubkey {
                 return Err(ContractError::InvalidSignature {});
             }
@@ -393,6 +393,32 @@ impl QGContract<'_> {
         let resp = Response::new()
             .add_attribute("action", "end_round")
             .add_event(Event::new("end_round").add_attribute("round_id", round_id.to_string()));
+        Ok(resp)
+    }
+
+    #[msg(exec)]
+    pub fn set_pubkey(
+        &self,
+        ctx: (DepsMut, Env, MessageInfo),
+        round_id: u64,
+        pubkey: Vec<u8>,
+    ) -> Result<Response, ContractError> {
+        let (deps, _, info) = ctx;
+        if !self.admins.has(deps.storage, &info.sender) {
+            return Err(ContractError::Unauthorized {
+                sender: info.sender,
+            });
+        }
+
+        let mut round = self.rounds.load(deps.storage, &round_id.to_string())?;
+
+        round.pubkey = pubkey.clone();
+        self.rounds
+            .save(deps.storage, &round_id.to_string(), &round)?;
+
+        let resp = Response::new()
+            .add_attribute("action", "set_pubkey")
+            .add_event(Event::new("set_pubkey").add_attribute("pubkey", hex::encode(&pubkey.as_slice())));
         Ok(resp)
     }
 

@@ -86,7 +86,7 @@ pub mod signature {
         msg
     }
 
-    pub fn verify(deps: Deps, msg: Vec<u8>, sig: Vec<u8>, recid: u8) -> Vec<u8> {
+    pub fn recover_pubkey(deps: Deps, msg: Vec<u8>, sig: Vec<u8>, recid: u8) -> Vec<u8> {
         let mut keccak256 = Keccak::v256();
         let mut hash = [0u8; 32];
 
@@ -107,7 +107,7 @@ pub mod signature {
         let deps = mock_dependencies();
         let msg = hex::decode("cd7fa009e29f21b3feb62c7091f38e7dad5270a08908583d037e25c3d987f1a902000000000000000108000000000000000180969800000000000000000000000000e817e37651ef0500").expect("Decoding failed");
         let sig = hex::decode("a9686a10a12b68ddcee5032a8e5e5486c59861a9fe62796c54ea468e67ede49b14b34fbfe3b51e7f16f2287dddd38492613319c8c5b4a0a7ada2de6585886b04").expect("Decoding failed");
-        let key = verify(deps.as_ref(), msg, sig, 0);
+        let key = recover_pubkey(deps.as_ref(), msg, sig, 0);
         assert_eq!(key, hex::decode("0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8").expect("Decoding failed"));
     }
 
