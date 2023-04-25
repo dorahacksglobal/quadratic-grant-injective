@@ -418,7 +418,9 @@ impl QGContract<'_> {
 
         let resp = Response::new()
             .add_attribute("action", "set_pubkey")
-            .add_event(Event::new("set_pubkey").add_attribute("pubkey", hex::encode(&pubkey.as_slice())));
+            .add_event(
+                Event::new("set_pubkey").add_attribute("pubkey", hex::encode(&pubkey.as_slice())),
+            );
         Ok(resp)
     }
 
@@ -783,6 +785,18 @@ mod tests {
         )
         .unwrap();
 
+        // Set pubkey
+        let info = mock_info("admin1", &[]);
+        let pubkey = hex::decode("0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8").unwrap();
+        let msg = ExecMsg::SetPubkey { round_id: 1, pubkey: pubkey.clone() };
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info,
+            ContractExecMsg::QGContract(msg),
+        )
+        .unwrap();
+
         // Check round status
         let resp = query(
             deps.as_ref(),
@@ -803,7 +817,7 @@ mod tests {
                 project_number: 2,
                 total_area: 500 * 15 + 400 * 268,
                 total_amounts: 410000,
-                pubkey: vec![],
+                pubkey,
             }
         );
 
