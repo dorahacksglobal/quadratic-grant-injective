@@ -1,6 +1,6 @@
-# Quadratic Voting Grant on Injetcive
+# Quadratic Voting Grant on Injective
 
-A quadratic funding implementation on Injetcive. This implementation distributes matching funds based on quadratic voting and includes [grant distribution algorithm](https://github.com/dorahacksglobal/qf-grant-contract/blob/bsc-long-term/grant-distribution-algorithm-en.md) (also called "quadratic funding tax") to ensure fairer distribution.
+A quadratic funding implementation on Injective. This implementation distributes matching funds based on quadratic voting and includes [grant distribution algorithm](https://github.com/dorahacksglobal/qf-grant-contract/blob/bsc-long-term/grant-distribution-algorithm-en.md) (also called "quadratic progressive tax") to ensure fairer distribution.
 
 For previous EVM implementations refer to this [repo](https://github.com/dorahacksglobal/qf-grant-contract/tree/bsc-long-term).
 
