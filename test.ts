@@ -19,12 +19,11 @@ import {
 
 import { Network, getNetworkEndpoints } from "@injectivelabs/networks";
 
-const privateKeyHash =
-  "6a9d3ca63d6832cfd283d17837371b0328a46bf2566752e188c407d6ddb5007c";
+const privateKeyHash = process.env.PRIVATE_KEY_HASH as string;
 const privateKey = PrivateKey.fromHex(privateKeyHash);
 const injectiveAddress = privateKey.toBech32();
 const publicKey = privateKey.toPublicKey().toBase64();
-const contractAddress = "inj1m573ael4haga2w0vgawrc7mdt2g994tml07wgp";
+const contractAddress = process.env.CONTRACT_ADDRESS as string;
 
 const network = Network.TestnetK8s;
 const endpoints = getNetworkEndpoints(network);
