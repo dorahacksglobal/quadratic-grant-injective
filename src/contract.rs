@@ -4,7 +4,8 @@
 //! License: Apache-2.0
 
 use cosmwasm_std::{
-    coins, Addr, BankMsg, DenomUnit, Deps, DepsMut, Empty, Env, Event, MessageInfo, Order, Response, StdError, StdResult, Uint128
+    coins, Addr, BankMsg, DenomUnit, Deps, DepsMut, Empty, Env, Event, MessageInfo, Order,
+    Response, StdError, StdResult, Uint128,
 };
 use cw_storage_plus::{Item, Map};
 use schemars;
@@ -45,6 +46,10 @@ impl QGContract<'_> {
         admins: Vec<String>,
     ) -> Result<Response, ContractError> {
         let (deps, _, _) = ctx;
+
+        if admins.is_empty() {
+            return Err(ContractError::NoAdmins {});
+        }
 
         for admin in admins {
             let admin = deps.api.addr_validate(&admin)?;
@@ -137,6 +142,24 @@ impl QGContract<'_> {
             return Err(ContractError::Unauthorized {
                 sender: info.sender,
             });
+        }
+
+        let supply = deps
+            .querier
+            .query_supply(&donation_denom)
+            .unwrap_or_default();
+        if supply.amount.is_zero() {
+            return Err(ContractError::InvalidDenom {
+                denom: donation_denom,
+            });
+        }
+
+        if voting_unit.u128() == 0 {
+            return Err(ContractError::VotingUnitZero {});
+        }
+
+        if pubkey.len() != 65 {
+            return Err(ContractError::InvalidPubkeyLength {});
         }
 
         let current_round = self.current_round.load(deps.storage)?;
@@ -242,12 +265,19 @@ impl QGContract<'_> {
             return Err(ContractError::RoundNotInVoting { round_id });
         }
 
+        if project_ids.len() != amounts.len() {
+            return Err(ContractError::LengthNotMatch {
+                expected: project_ids.len() as u128,
+                actual: amounts.len() as u128,
+            });
+        }
+
         let weight: u64;
         if sig.is_empty() {
             // If there is no signature, the weight is 1.0, which means vcDORA is not included in the calculation.
             weight = 10;
-        } else if sig.len() != 65 {
-            return Err(ContractError::InvalidSignature {});
+        } else if sig.len() != 64 {
+            return Err(ContractError::InvalidSignatureLength {});
         } else {
             if round.pubkey.is_empty() {
                 return Err(ContractError::PubkeyNotSet {});
@@ -291,7 +321,7 @@ impl QGContract<'_> {
                 break;
             }
         }
-       
+
         let decimals = denom_unit.unwrap().exponent;
 
         for (project_id, vote) in project_ids.iter().zip(amounts.iter()) {
@@ -301,8 +331,7 @@ impl QGContract<'_> {
                 deps.storage,
                 (&round_id.to_string(), &project_id.to_string()),
             )?;
-            
-            
+
             let pow_10_decimals = 10u128.pow(decimals);
             let votes = amount * round.voting_unit.u128() / pow_10_decimals;
             println!("votes: {} ", votes);

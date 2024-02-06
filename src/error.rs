@@ -30,12 +30,30 @@ pub enum ContractError {
     #[error("expected {expected} but got {actual}")]
     InvalidAmount { expected: u128, actual: u128 },
 
+    #[error("expected {expected} but got {actual}")]
+    LengthNotMatch { expected: u128, actual: u128 },
+
     #[error("Invalid signature")]
     InvalidSignature,
+
+    #[error("Invalid signature length")]
+    InvalidSignatureLength,
 
     #[error("Invalid signature timestamp")]
     InvalidSignatureTimestamp,
 
     #[error("Pubkey not set")]
     PubkeyNotSet,
+
+    #[error("Invalid pubkey length")]
+    InvalidPubkeyLength,
+
+    #[error("No admins set")]
+    NoAdmins,
+
+    #[error("Invalid denom: {denom}")]
+    InvalidDenom { denom: String },
+
+    #[error("Invalid voting unit")]
+    VotingUnitZero
 }

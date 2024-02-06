@@ -7,7 +7,7 @@ mod tests {
     use crate::responses::AdminListResp;
     use crate::state::{Project, ProjectStatus, Round, RoundStatus};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_json, Coin, DenomMetadata, DenomUnit, Uint128};
+    use cosmwasm_std::{from_json, Coin, DenomMetadata, DenomUnit, Timestamp, Uint128};
 
     #[test]
     fn admin_list_query() {
@@ -80,7 +80,8 @@ mod tests {
     #[test]
     fn test_all() {
         let mut deps = mock_dependencies();
-        let env = mock_env();
+        let mut env = mock_env();
+
         let denom_meta_data = DenomMetadata {
             base: "inj".to_string(),
             display: "inj".to_string(),
@@ -96,6 +97,15 @@ mod tests {
             }],
         };
         deps.querier.set_denom_metadata(&vec![denom_meta_data]);
+        deps.querier.update_balance(
+            "test",
+            vec![Coin {
+                denom: "inj".to_string(),
+                amount: Uint128::from(1000000000000000000u128),
+            }],
+        );
+
+        env.block.time = Timestamp::from_seconds(1682415684);
 
         // Instantiate
         instantiate(
@@ -331,9 +341,13 @@ mod tests {
             }
         );
 
-        // End round
+        // Set pubkey
         let info = mock_info("admin1", &[]);
-        let msg = ExecMsg::EndRound { round_id: 1 };
+        let pubkey = hex::decode("0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8").unwrap();
+        let msg = ExecMsg::SetPubkey {
+            round_id: 1,
+            pubkey: pubkey.clone(),
+        };
         execute(
             deps.as_mut(),
             env.clone(),
@@ -342,13 +356,9 @@ mod tests {
         )
         .unwrap();
 
-        // Set pubkey
+        // End round
         let info = mock_info("admin1", &[]);
-        let pubkey = hex::decode("0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8").unwrap();
-        let msg = ExecMsg::SetPubkey {
-            round_id: 1,
-            pubkey: pubkey.clone(),
-        };
+        let msg = ExecMsg::EndRound { round_id: 1 };
         execute(
             deps.as_mut(),
             env.clone(),
