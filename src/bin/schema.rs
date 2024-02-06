@@ -1,5 +1,5 @@
 use cosmwasm_schema::write_api;
-use quadratic_grant::contract::{ContractExecMsg, ContractQueryMsg, InstantiateMsg};
+use quadratic_grant::contract::sv::{ContractExecMsg, ContractQueryMsg, InstantiateMsg};
 
 fn main() {
     write_api! {

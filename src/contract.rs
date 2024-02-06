@@ -4,8 +4,7 @@
 //! License: Apache-2.0
 
 use cosmwasm_std::{
-    coins, Addr, BankMsg, Deps, DepsMut, Empty, Env, Event, MessageInfo, Order, Response, StdError,
-    StdResult, Uint128,
+    coins, Addr, BankMsg, DenomUnit, Deps, DepsMut, Empty, Env, Event, MessageInfo, Order, Response, StdError, StdResult, Uint128
 };
 use cw_storage_plus::{Item, Map};
 use schemars;
@@ -27,6 +26,7 @@ pub struct QGContract<'a> {
 }
 
 #[contract]
+#[error(ContractError)]
 impl QGContract<'_> {
     pub const fn new() -> Self {
         Self {
@@ -243,13 +243,13 @@ impl QGContract<'_> {
         }
 
         let weight: u64;
-        if sig.len() == 0 {
+        if sig.is_empty() {
             // If there is no signature, the weight is 1.0, which means vcDORA is not included in the calculation.
             weight = 10;
         } else if sig.len() != 65 {
             return Err(ContractError::InvalidSignature {});
         } else {
-            if round.pubkey.len() == 0 {
+            if round.pubkey.is_empty() {
                 return Err(ContractError::PubkeyNotSet {});
             }
             // buidl msg
@@ -281,6 +281,19 @@ impl QGContract<'_> {
         let mut total_amounts = 0;
         let mut total_area = 0;
 
+        let denom = round.donation_denom.clone();
+        let denom_metadata = deps.querier.query_denom_metadata(&denom).unwrap();
+
+        let mut denom_unit: Option<DenomUnit> = None;
+        for unit in denom_metadata.denom_units {
+            if unit.denom == denom_metadata.display {
+                denom_unit = Some(unit);
+                break;
+            }
+        }
+       
+        let decimals = denom_unit.unwrap().exponent;
+
         for (project_id, vote) in project_ids.iter().zip(amounts.iter()) {
             let amount = vote.u128();
             total_amounts = total_amounts + amount;
@@ -288,10 +301,9 @@ impl QGContract<'_> {
                 deps.storage,
                 (&round_id.to_string(), &project_id.to_string()),
             )?;
-
-            const DECIMALS: u32 = 18; // TODO...
-
-            let pow_10_decimals = 10u128.pow(DECIMALS);
+            
+            
+            let pow_10_decimals = 10u128.pow(decimals);
             let votes = amount * round.voting_unit.u128() / pow_10_decimals;
             println!("votes: {} ", votes);
             project.votes = project.votes + votes;

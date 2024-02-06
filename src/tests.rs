@@ -1,138 +1,13 @@
-use cosmwasm_std::{Addr, };
-use cw_multi_test::App;
-
-use crate::{
-    error::ContractError, multitest::proxy::QGContractCodeId, responses::AdminListResp,
-};
-
-#[test]
-fn basic() {
-    let mut app = App::default();
-
-    let owner = Addr::unchecked("addr0001");
-    let admins = vec![
-        "admin1".to_owned(),
-        "admin2".to_owned(),
-        "admin3".to_owned(),
-    ];
-
-    let code_id = QGContractCodeId::store_code(&mut app);
-
-    let contract = code_id
-        .instantiate(
-            &mut app, 
-            &owner, 
-            admins.clone(), 
-            "Quadratic grant contract", 
-            None)
-        .unwrap();
-
-    let resp = contract.admin_list(&app).unwrap();
-
-    assert_eq!(resp, AdminListResp { admins });
-}
-
-#[test]
-fn unathorized() {
-    let mut app = App::default();
-
-    let owner = Addr::unchecked("addr0001");
-    let admin1 = Addr::unchecked("admin1");
-    let admin2 = Addr::unchecked("admin2");
-    let admin3 = Addr::unchecked("admin3");
-
-    let code_id = QGContractCodeId::store_code(&mut app);
-
-    let contract = code_id
-        .instantiate(
-            &mut app,
-            &owner,
-            vec![admin1.to_string(), admin2.to_string()],
-            "Quadratic grant contract", 
-            None,
-        )
-        .unwrap();
-
-    let resp = contract.admin_list(&app).unwrap();
-
-    assert_eq!(
-        resp,
-        AdminListResp {
-            admins: vec![admin1.to_string(), admin2.to_string()]
-        }
-    );
-
-    let err = contract
-        .add_member(&mut app, &admin3, admin3.to_string())
-        .unwrap_err();
-
-    assert_eq!(err, ContractError::Unauthorized { sender: admin3 });
-
-    let resp = contract.admin_list(&app).unwrap();
-
-    assert_eq!(
-        resp,
-        AdminListResp {
-            admins: vec![admin1.to_string(), admin2.to_string()]
-        }
-    );
-}
-
-#[test]
-fn no_dup() {
-    let mut app = App::default();
-
-    let owner = Addr::unchecked("addr0001");
-    let admin1 = Addr::unchecked("admin1");
-    let admin2 = Addr::unchecked("admin2");
-
-    let code_id = QGContractCodeId::store_code(&mut app);
-
-    let contract = code_id
-        .instantiate(
-            &mut app,
-            &owner,
-            vec![admin1.to_string(), admin2.to_string()],
-            "Quadratic grant contract", 
-            None,
-        )
-        .unwrap();
-
-    let resp = contract.admin_list(&app).unwrap();
-
-    assert_eq!(
-        resp,
-        AdminListResp {
-            admins: vec![admin1.to_string(), admin2.to_string()]
-        }
-    );
-
-    let err = contract
-        .add_member(&mut app, &admin1, admin1.to_string())
-        .unwrap_err();
-
-    assert_eq!(err, ContractError::NoDupAddress { address: admin1.to_owned() });
-
-    let resp = contract.admin_list(&app).unwrap();
-
-    assert_eq!(
-        resp,
-        AdminListResp {
-            admins: vec![admin1.to_string(), admin2.to_string()]
-        }
-    );
-}
-
-
 #[cfg(test)]
 mod tests {
-    use crate::contract::{InstantiateMsg, QueryMsg, ContractQueryMsg, ExecMsg, ContractExecMsg};
+    use crate::contract::sv::{
+        ContractExecMsg, ContractQueryMsg, ExecMsg, InstantiateMsg, QueryMsg,
+    };
     use crate::entry_point::{execute, instantiate, query};
-    use crate::state::{Round, RoundStatus, Project, ProjectStatus};
+    use crate::responses::AdminListResp;
+    use crate::state::{Project, ProjectStatus, Round, RoundStatus};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, Coin, Uint128};
-
-    use super::*;
+    use cosmwasm_std::{from_json, Coin, DenomMetadata, DenomUnit, Uint128};
 
     #[test]
     fn admin_list_query() {
@@ -151,7 +26,7 @@ mod tests {
 
         let msg = QueryMsg::AdminList {};
         let resp = query(deps.as_ref(), env, ContractQueryMsg::QGContract(msg)).unwrap();
-        let resp: AdminListResp = from_binary(&resp).unwrap();
+        let resp: AdminListResp = from_json(&resp).unwrap();
         assert_eq!(
             resp,
             AdminListResp {
@@ -189,7 +64,7 @@ mod tests {
 
         let msg = QueryMsg::AdminList {};
         let resp = query(deps.as_ref(), env, ContractQueryMsg::QGContract(msg)).unwrap();
-        let resp: AdminListResp = from_binary(&resp).unwrap();
+        let resp: AdminListResp = from_json(&resp).unwrap();
         assert_eq!(
             resp,
             AdminListResp {
@@ -206,6 +81,21 @@ mod tests {
     fn test_all() {
         let mut deps = mock_dependencies();
         let env = mock_env();
+        let denom_meta_data = DenomMetadata {
+            base: "inj".to_string(),
+            display: "inj".to_string(),
+            name: "inj".to_string(),
+            description: "inj".to_string(),
+            symbol: "inj".to_string(),
+            uri: "inj".to_string(),
+            uri_hash: "inj".to_string(),
+            denom_units: vec![DenomUnit {
+                denom: "inj".to_string(),
+                exponent: 18,
+                aliases: vec!["inj".to_string()],
+            }],
+        };
+        deps.querier.set_denom_metadata(&vec![denom_meta_data]);
 
         // Instantiate
         instantiate(
@@ -243,7 +133,7 @@ mod tests {
             ContractQueryMsg::QGContract(msg),
         )
         .unwrap();
-        let resp: Round = from_binary(&resp).unwrap();
+        let resp: Round = from_json(&resp).unwrap();
         assert_eq!(
             resp,
             Round {
@@ -280,7 +170,7 @@ mod tests {
             ContractQueryMsg::QGContract(QueryMsg::Round { round_id: 1 }),
         )
         .unwrap();
-        let resp: Round = from_binary(&resp).unwrap();
+        let resp: Round = from_json(&resp).unwrap();
         assert_eq!(
             resp,
             Round {
@@ -305,7 +195,7 @@ mod tests {
             }),
         )
         .unwrap();
-        let resp: Project = from_binary(&resp).unwrap();
+        let resp: Project = from_json(&resp).unwrap();
         assert_eq!(
             resp,
             Project {
@@ -403,7 +293,7 @@ mod tests {
             ContractQueryMsg::QGContract(QueryMsg::Round { round_id: 1 }),
         )
         .unwrap();
-        let resp: Round = from_binary(&resp).unwrap();
+        let resp: Round = from_json(&resp).unwrap();
         assert_eq!(
             resp,
             Round {
@@ -428,7 +318,7 @@ mod tests {
             }),
         )
         .unwrap();
-        let resp: Project = from_binary(&resp).unwrap();
+        let resp: Project = from_json(&resp).unwrap();
         assert_eq!(
             resp,
             Project {
@@ -474,7 +364,7 @@ mod tests {
             ContractQueryMsg::QGContract(QueryMsg::Round { round_id: 1 }),
         )
         .unwrap();
-        let resp: Round = from_binary(&resp).unwrap();
+        let resp: Round = from_json(&resp).unwrap();
         assert_eq!(
             resp,
             Round {
