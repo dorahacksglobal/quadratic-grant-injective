@@ -467,6 +467,10 @@ impl QGContract<'_> {
 
         let mut round = self.rounds.load(deps.storage, &round_id.to_string())?;
 
+        if round.status != RoundStatus::Voting {
+            return Err(ContractError::RoundNotInVoting { round_id });
+        }
+
         round.pubkey = pubkey.clone();
         self.rounds
             .save(deps.storage, &round_id.to_string(), &round)?;
