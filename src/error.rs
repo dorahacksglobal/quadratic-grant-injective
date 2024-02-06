@@ -55,5 +55,8 @@ pub enum ContractError {
     InvalidDenom { denom: String },
 
     #[error("Invalid voting unit")]
-    VotingUnitZero
+    VotingUnitZero,
+
+    #[error("Amount too small: {amount}")]
+    TooSmallAmount { amount: u128 },
 }

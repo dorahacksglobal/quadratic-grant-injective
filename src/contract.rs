@@ -375,7 +375,12 @@ impl QGContract<'_> {
 
             let pow_10_decimals = 10u128.pow(decimals);
             let votes = amount * round.voting_unit.u128() / pow_10_decimals;
-            println!("votes: {} ", votes);
+            if votes == 0 {
+                return Err(ContractError::TooSmallAmount {
+                    amount,
+                });
+            }
+
             project.votes = project.votes + votes;
             project.contribution = project.contribution + amount;
 
