@@ -35,4 +35,7 @@ pub enum ContractError {
 
     #[error("Invalid signature timestamp")]
     InvalidSignatureTimestamp,
+
+    #[error("Pubkey not set")]
+    PubkeyNotSet,
 }

@@ -65,6 +65,8 @@ pub mod signature {
         amounts: &Vec<Uint128>,
         vcdora: u64,
         timestamp: u64,
+        sig_chain_id: &str,
+        sig_contract_addr: &str,
     ) -> Vec<u8> {
         let round_id_bytes = round_id.to_le_bytes();
         let mut project_ids_bytes = Vec::new();
@@ -83,6 +85,8 @@ pub mod signature {
         msg.extend_from_slice(&amounts_bytes);
         msg.extend_from_slice(&vcdora.to_le_bytes());
         msg.extend_from_slice(&timestamp.to_le_bytes());
+        msg.extend_from_slice(sig_chain_id.as_bytes());
+        msg.extend_from_slice(sig_contract_addr.as_bytes());
         msg
     }
 
@@ -120,6 +124,8 @@ pub mod signature {
             &vec![100000000000000000u128.into(), 200000000000000000u128.into()],
             42,
             1682415684,
+            "",
+            "",
         );
         assert_eq!(msg, hex::decode("4c87d8f31e3d6ee5969e4002e614a9c72c6a99b801000000000000000900000000000000080000000000000000008a5d784563010000000000000000000014bbf08ac60200000000000000002a0000000000000044a0476400000000").expect("Decoding failed"));
     }
