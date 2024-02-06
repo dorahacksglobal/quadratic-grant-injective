@@ -297,7 +297,7 @@ impl QGContract<'_> {
             );
 
             // verify signature
-            if env.block.time.seconds() > timestamp + 60 * 60 {
+            if env.block.time.seconds() > timestamp + 60 * 60 { // 1 hour
                 return Err(ContractError::InvalidSignatureTimestamp {});
             }
             let pubkey = signature::recover_pubkey(deps.as_ref(), msg, sig, recid);
@@ -305,7 +305,8 @@ impl QGContract<'_> {
                 return Err(ContractError::InvalidSignature {});
             }
 
-            weight = math::log2_u64_with_decimal(vcdora + 2);
+            // calculate weight, 10 means 1.0
+            weight = math::log2_u64_with_decimal(vcdora + 2); // plus 2 to avoid 0
         }
 
         let mut total_amounts = 0;
@@ -360,11 +361,11 @@ impl QGContract<'_> {
                 &new_votes,
             )?;
 
-            let old_area = math::sqrt(old_votes * 100);
+            let old_area = math::sqrt(old_votes * 100); // times 100 to avoid float, scale area by 10
             let new_area = math::sqrt(new_votes * 100);
             println!("old_area: {} new_area: {}", old_area, new_area);
 
-            let area_diff = (new_area * weight / 10 - old_area) as u128; // adjust by weight
+            let area_diff = (new_area * weight / 10 - old_area) as u128; // adjust by weight, 10 means 1.0, div 10 to get the real weight
 
             project.area = project.area + area_diff;
             total_area = total_area + area_diff;

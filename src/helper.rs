@@ -1,3 +1,4 @@
+/// This module contains helper functions for mathematical operations.
 pub mod math {
     pub fn log2_u64_with_decimal(x: u64) -> u64 {
         let mut integer = 0;
@@ -11,6 +12,9 @@ pub mod math {
         let mut fractional = 0;
         m *= 1000;
         t = x * 1000;
+        // 71773463 / 1000000000 = 10^((lg2^(1/10)) - 1
+        // The result of this formula is a specific numerical value, representing the proportional increase of 2^(1/10) over 1.
+        // In other words, it indicates how much greater 2^(1/10) is compared to 1 in decimal terms.
         let mut step = m * 71773463 / 1000000000;
         while fractional < 10 {
             m += step;
@@ -118,7 +122,9 @@ pub mod signature {
     #[test]
     fn test_build_msg() {
         let msg = build_msg(
-            &hex::decode("4C87D8f31E3d6EE5969e4002E614a9c72C6A99B8").expect("Decoding failed").as_slice(),
+            &hex::decode("4C87D8f31E3d6EE5969e4002E614a9c72C6A99B8")
+                .expect("Decoding failed")
+                .as_slice(),
             1,
             &vec![9, 8],
             &vec![100000000000000000u128.into(), 200000000000000000u128.into()],
