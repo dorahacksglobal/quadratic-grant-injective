@@ -1,8 +1,12 @@
 /// This module contains helper functions for mathematical operations.
 pub mod math {
-    pub fn log2_u64_with_decimal(x: u64) -> u64 {
+    use cosmwasm_std::{StdError, StdResult};
+    pub fn log2_u64_with_decimal(x: u64) -> StdResult<u64> {
+        if x == 0 {
+            return Err(StdError::generic_err("log2(0) is undefined"));
+        }
         let mut integer = 0;
-        let mut t = x;
+        let mut t = x as u128;
         let mut m = 1;
         while t > 1 {
             t >>= 1;
@@ -11,7 +15,7 @@ pub mod math {
         }
         let mut fractional = 0;
         m *= 1000;
-        t = x * 1000;
+        t = x as u128 * 1000;
         // 71773463 / 1000000000 = 10^((lg2^(1/10)) - 1
         // The result of this formula is a specific numerical value, representing the proportional increase of 2^(1/10) over 1.
         // In other words, it indicates how much greater 2^(1/10) is compared to 1 in decimal terms.
@@ -25,7 +29,7 @@ pub mod math {
                 fractional = fractional + 1;
             };
         }
-        integer * 10 + fractional
+        Ok(integer * 10 + fractional)
     }
 
     pub fn sqrt(y: u128) -> u64 {
@@ -48,13 +52,12 @@ pub mod math {
 
     #[test]
     fn test_log2_u64_with_decimal() {
-        assert_eq!(log2_u64_with_decimal(0), 0);
-        assert_eq!(log2_u64_with_decimal(1), 0);
-        assert_eq!(log2_u64_with_decimal(2), 10);
-        assert_eq!(log2_u64_with_decimal(3), 15);
-        assert_eq!(log2_u64_with_decimal(25), 46);
-        assert_eq!(log2_u64_with_decimal(1024), 100);
-        assert_eq!(log2_u64_with_decimal(123143400), 268);
+        assert_eq!(log2_u64_with_decimal(1), Ok(0));
+        assert_eq!(log2_u64_with_decimal(2), Ok(10));
+        assert_eq!(log2_u64_with_decimal(3), Ok(15));
+        assert_eq!(log2_u64_with_decimal(25), Ok(46));
+        assert_eq!(log2_u64_with_decimal(1024), Ok(100));
+        assert_eq!(log2_u64_with_decimal(123143400), Ok(268));
     }
 }
 

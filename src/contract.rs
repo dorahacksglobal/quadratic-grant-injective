@@ -346,7 +346,7 @@ impl QGContract<'_> {
             }
 
             // calculate weight, 10 means 1.0
-            weight = math::log2_u64_with_decimal(vcdora + 2); // plus 2 to avoid 0
+            weight = math::log2_u64_with_decimal(vcdora + 2)?; // plus 2 to avoid 0
         }
 
         let mut total_amounts = 0;
