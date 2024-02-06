@@ -389,9 +389,6 @@ impl QGContract<'_> {
 
         round.total_area += total_area;
         round.total_amounts += total_amounts;
-        println!("total_area: {}", total_area);
-        println!("round.total_area: {}", round.total_area);
-        println!("round.total_amounts: {}", round.total_amounts);
         self.rounds
             .save(deps.storage, &round_id.to_string(), &round)?;
 
@@ -503,23 +500,27 @@ impl QGContract<'_> {
             return Err(ContractError::RoundNotEnded { round_id });
         }
 
-        let amounts = round.total_amounts;
-        let message = BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: coins(amounts, &denom),
-        };
         round.status = RoundStatus::Withdrawn;
         self.rounds
             .save(deps.storage, &round_id.to_string(), &round)?;
 
-        let resp = Response::new()
-            .add_message(message)
-            .add_attribute("action", "withdraw")
-            .add_event(
-                Event::new("withdraw")
-                    .add_attribute("round_id", round_id.to_string())
-                    .add_attribute("amounts", amounts.to_string()),
-            );
+        let amounts = round.total_amounts;
+        let resp = if amounts > 0 {
+            let message = BankMsg::Send {
+                to_address: info.sender.to_string(),
+                amount: coins(amounts, &denom),
+            };
+
+            Response::new().add_message(message)
+        } else {
+            Response::new()
+        };
+
+        resp.clone().add_attribute("action", "withdraw").add_event(
+            Event::new("withdraw")
+                .add_attribute("round_id", round_id.to_string())
+                .add_attribute("amounts", amounts.to_string()),
+        );
         Ok(resp)
     }
 }
