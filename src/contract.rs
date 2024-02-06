@@ -80,12 +80,18 @@ impl QGContract<'_> {
         }
 
         self.owner.save(deps.storage, &msg.sender)?;
-        for admin in admins {
+        for admin in admins.clone() {
             let admin = deps.api.addr_validate(&admin)?;
             self.admins.save(deps.storage, &admin, &Empty {})?;
         }
         self.current_round.save(deps.storage, &0)?;
-        Ok(Response::new())
+        Ok(Response::new()
+            .add_attribute("action", "instantiate")
+            .add_event(
+                Event::new("instantiate")
+                    .add_attribute("owner", &msg.sender)
+                    .add_attribute("admins", admins.join(", ").to_string()),
+            ))
     }
 
     // ============= Query ============= //
@@ -165,7 +171,7 @@ impl QGContract<'_> {
         if !self.admins.has(deps.storage, &admin) {
             return Err(ContractError::NoAdmins);
         }
-        
+
         self.admins.remove(deps.storage, &admin);
 
         let resp = Response::new()
@@ -277,7 +283,7 @@ impl QGContract<'_> {
             .add_event(
                 Event::new("batch_upload_project")
                     .add_attribute("round_id", round_id.to_string())
-                    .add_attribute("projects", owner_addresses.join(", ").to_string()), // TODO...
+                    .add_attribute("projects", owner_addresses.join(", ").to_string()),
             );
         Ok(resp)
     }
@@ -376,9 +382,7 @@ impl QGContract<'_> {
             let pow_10_decimals = 10u128.pow(decimals);
             let votes = amount * round.voting_unit.u128() / pow_10_decimals;
             if votes == 0 {
-                return Err(ContractError::TooSmallAmount {
-                    amount,
-                });
+                return Err(ContractError::TooSmallAmount { amount });
             }
 
             project.votes = project.votes + votes;
@@ -395,11 +399,11 @@ impl QGContract<'_> {
             match votes {
                 Some(votes) => {
                     old_votes = votes;
-                    new_votes = new_votes + old_votes;
+                    new_votes = new_votes  + old_votes;
                 }
                 None => {}
             }
-            println!("old_votes: {} new_votes: {}", old_votes, new_votes);
+            deps.api.debug(&format!("old_votes: {} new_votes: {}", old_votes, new_votes));
             self.votes.save(
                 deps.storage,
                 (&round_id.to_string(), &project_id.to_string(), &info.sender),
@@ -408,13 +412,13 @@ impl QGContract<'_> {
 
             let old_area = math::sqrt(old_votes * 100); // times 100 to avoid float, scale area by 10
             let new_area = math::sqrt(new_votes * 100);
-            println!("old_area: {} new_area: {}", old_area, new_area);
+            deps.api.debug(&format!("old_area: {} new_area: {}", old_area, new_area));
 
             let area_diff = (new_area * weight / 10 - old_area) as u128; // adjust by weight, 10 means 1.0, div 10 to get the real weight
 
             project.area = project.area + area_diff;
             total_area = total_area + area_diff;
-            println!("total_area inner: {} {}", total_area, area_diff);
+            deps.api.debug(&format!("total_area inner: {} {}", total_area, area_diff));
 
             self.projects.save(
                 deps.storage,
@@ -442,6 +446,7 @@ impl QGContract<'_> {
             .add_attribute("action", "weighted_batch_vote")
             .add_event(
                 Event::new("weighted_batch_vote")
+                    .add_attribute("voter", info.sender)
                     .add_attribute("round_id", round_id.to_string())
                     .add_attribute(
                         "projects",
@@ -450,14 +455,19 @@ impl QGContract<'_> {
                             project_ids
                                 .iter()
                                 .map(|x| x.to_string())
-                                .collect::<String>()
+                                .collect::<Vec<String>>()
+                                .join(",")
                         ),
                     )
                     .add_attribute(
                         "amounts",
                         format!(
                             "{:?}",
-                            amounts.iter().map(|x| x.to_string()).collect::<String>()
+                            amounts
+                                .iter()
+                                .map(|x| x.to_string())
+                                .collect::<Vec<String>>()
+                                .join(",")
                         ),
                     )
                     .add_attribute("total_area", total_area.to_string()),
