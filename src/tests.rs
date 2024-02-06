@@ -36,22 +36,22 @@ mod tests {
     }
 
     #[test]
-    fn add_member() {
+    fn add_admin() {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
         instantiate(
             deps.as_mut(),
             env.clone(),
-            mock_info("sender", &[]),
+            mock_info("owner", &[]),
             InstantiateMsg {
                 admins: vec!["admin1".to_owned(), "admin2".to_owned()],
             },
         )
         .unwrap();
 
-        let info = mock_info("admin1", &[]);
-        let msg = ExecMsg::AddMember {
+        let info = mock_info("owner", &[]);
+        let msg = ExecMsg::AddAdmin {
             admin: "admin3".to_owned(),
         };
         execute(

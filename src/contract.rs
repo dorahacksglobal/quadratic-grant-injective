@@ -19,6 +19,7 @@ use crate::{
 };
 
 pub struct QGContract<'a> {
+    pub(crate) owner: Item<'a, Addr>,
     pub(crate) admins: Map<'a, &'a Addr, Empty>,
     pub(crate) rounds: Map<'a, &'a str, Round>,
     pub(crate) current_round: Item<'a, u64>,
@@ -31,12 +32,26 @@ pub struct QGContract<'a> {
 impl QGContract<'_> {
     pub const fn new() -> Self {
         Self {
+            owner: Item::new("owner"),
             admins: Map::new("admins"),
             rounds: Map::new("rounds"),
             current_round: Item::new("current_round"),
             projects: Map::new("projects"),
             votes: Map::new("votes"),
         }
+    }
+
+    fn check_owner_permission(
+        &self,
+        deps: &DepsMut,
+        info: &MessageInfo,
+    ) -> Result<(), ContractError> {
+        if self.owner.load(deps.storage)? != info.sender {
+            return Err(ContractError::Unauthorized {
+                sender: info.sender.clone(),
+            });
+        }
+        Ok(())
     }
 
     fn check_admin_permission(
@@ -58,12 +73,13 @@ impl QGContract<'_> {
         ctx: (DepsMut, Env, MessageInfo),
         admins: Vec<String>,
     ) -> Result<Response, ContractError> {
-        let (deps, _, _) = ctx;
+        let (deps, _, msg) = ctx;
 
         if admins.is_empty() {
             return Err(ContractError::NoAdmins {});
         }
 
+        self.owner.save(deps.storage, &msg.sender)?;
         for admin in admins {
             let admin = deps.api.addr_validate(&admin)?;
             self.admins.save(deps.storage, &admin, &Empty {})?;
@@ -115,13 +131,13 @@ impl QGContract<'_> {
 
     // ============= Execute ============= //
     #[msg(exec)]
-    pub fn add_member(
+    pub fn add_admin(
         &self,
         ctx: (DepsMut, Env, MessageInfo),
         admin: String,
     ) -> Result<Response, ContractError> {
         let (deps, _, info) = ctx;
-        self.check_admin_permission(&deps, &info)?;
+        self.check_owner_permission(&deps, &info)?;
 
         let admin = deps.api.addr_validate(&admin)?;
         if self.admins.has(deps.storage, &admin) {
@@ -133,6 +149,28 @@ impl QGContract<'_> {
         let resp = Response::new()
             .add_attribute("action", "add_member")
             .add_event(Event::new("admin_added").add_attribute("addr", admin));
+        Ok(resp)
+    }
+
+    #[msg(exec)]
+    pub fn del_admin(
+        &self,
+        ctx: (DepsMut, Env, MessageInfo),
+        admin: String,
+    ) -> Result<Response, ContractError> {
+        let (deps, _, info) = ctx;
+        self.check_owner_permission(&deps, &info)?;
+
+        let admin = deps.api.addr_validate(&admin)?;
+        if !self.admins.has(deps.storage, &admin) {
+            return Err(ContractError::NoAdmins);
+        }
+        
+        self.admins.remove(deps.storage, &admin);
+
+        let resp = Response::new()
+            .add_attribute("action", "del_admin")
+            .add_event(Event::new("admin_removed").add_attribute("addr", admin));
         Ok(resp)
     }
 
