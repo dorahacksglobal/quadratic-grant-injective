@@ -39,6 +39,19 @@ impl QGContract<'_> {
         }
     }
 
+    fn check_admin_permission(
+        &self,
+        deps: &DepsMut,
+        info: &MessageInfo,
+    ) -> Result<(), ContractError> {
+        if !self.admins.has(deps.storage, &info.sender) {
+            return Err(ContractError::Unauthorized {
+                sender: info.sender.clone(),
+            });
+        }
+        Ok(())
+    }
+
     #[msg(instantiate)]
     pub fn instantiate(
         &self,
@@ -108,11 +121,7 @@ impl QGContract<'_> {
         admin: String,
     ) -> Result<Response, ContractError> {
         let (deps, _, info) = ctx;
-        if !self.admins.has(deps.storage, &info.sender) {
-            return Err(ContractError::Unauthorized {
-                sender: info.sender,
-            });
-        }
+        self.check_admin_permission(&deps, &info)?;
 
         let admin = deps.api.addr_validate(&admin)?;
         if self.admins.has(deps.storage, &admin) {
@@ -138,11 +147,7 @@ impl QGContract<'_> {
         pubkey: Vec<u8>,
     ) -> Result<Response, ContractError> {
         let (deps, _, info) = ctx;
-        if !self.admins.has(deps.storage, &info.sender) {
-            return Err(ContractError::Unauthorized {
-                sender: info.sender,
-            });
-        }
+        self.check_admin_permission(&deps, &info)?;
 
         let supply = deps
             .querier
@@ -158,7 +163,7 @@ impl QGContract<'_> {
             return Err(ContractError::VotingUnitZero {});
         }
 
-        if pubkey.len() != 65 {
+        if pubkey.len() != 65 && pubkey.len() != 0 {
             return Err(ContractError::InvalidPubkeyLength {});
         }
 
@@ -196,11 +201,7 @@ impl QGContract<'_> {
         owner_addresses: Vec<String>,
     ) -> Result<Response, ContractError> {
         let (deps, _, info) = ctx;
-        if !self.admins.has(deps.storage, &info.sender) {
-            return Err(ContractError::Unauthorized {
-                sender: info.sender,
-            });
-        }
+        self.check_admin_permission(&deps, &info)?;
 
         let mut round = self.rounds.load(deps.storage, &round_id.to_string())?;
 
@@ -297,7 +298,8 @@ impl QGContract<'_> {
             );
 
             // verify signature
-            if env.block.time.seconds() > timestamp + 60 * 60 { // 1 hour
+            if env.block.time.seconds() > timestamp + 60 * 60 {
+                // 1 hour
                 return Err(ContractError::InvalidSignatureTimestamp {});
             }
             let pubkey = signature::recover_pubkey(deps.as_ref(), msg, sig, recid);
@@ -427,11 +429,7 @@ impl QGContract<'_> {
         round_id: u64,
     ) -> Result<Response, ContractError> {
         let (deps, _, info) = ctx;
-        if !self.admins.has(deps.storage, &info.sender) {
-            return Err(ContractError::Unauthorized {
-                sender: info.sender,
-            });
-        }
+        self.check_admin_permission(&deps, &info)?;
 
         let mut round = self.rounds.load(deps.storage, &round_id.to_string())?;
 
@@ -457,11 +455,7 @@ impl QGContract<'_> {
         pubkey: Vec<u8>,
     ) -> Result<Response, ContractError> {
         let (deps, _, info) = ctx;
-        if !self.admins.has(deps.storage, &info.sender) {
-            return Err(ContractError::Unauthorized {
-                sender: info.sender,
-            });
-        }
+        self.check_admin_permission(&deps, &info)?;
 
         let mut round = self.rounds.load(deps.storage, &round_id.to_string())?;
 
@@ -488,11 +482,7 @@ impl QGContract<'_> {
         round_id: u64,
     ) -> Result<Response, ContractError> {
         let (deps, _, info) = ctx;
-        if !self.admins.has(deps.storage, &info.sender) {
-            return Err(ContractError::Unauthorized {
-                sender: info.sender,
-            });
-        }
+        self.check_admin_permission(&deps, &info)?;
 
         let mut round = self.rounds.load(deps.storage, &round_id.to_string())?;
         let denom = round.donation_denom.clone();
