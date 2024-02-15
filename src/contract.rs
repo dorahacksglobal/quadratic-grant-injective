@@ -510,6 +510,10 @@ impl QGContract<'_> {
         let (deps, _, info) = ctx;
         self.check_admin_permission(&deps, &info)?;
 
+        if pubkey.len() != 65 {
+            return Err(ContractError::InvalidPubkeyLength {});
+        }
+
         let mut round = self.rounds.load(deps.storage, &round_id.to_string())?;
 
         if round.status != RoundStatus::Voting {
