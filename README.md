@@ -78,11 +78,14 @@ cargo run-script check
 deploy
 
 ```sh
+export INJ_ADDRESS=inj1t68r9rqkrzdy2xdqmjj9mhxz3n7v480pmx52hz
+injectived query bank balances $INJ_ADDRESS --node=https://testnet.sentry.tm.injective.network:443
+
 injectived tx wasm store /var/artifacts/quadratic_grant-aarch64.wasm \
 --from=$(echo $INJ_ADDRESS) \
 --chain-id="injective-888" \
 --yes --fees=1005000000000000inj --gas=3000000 \
---node=https://k8s.testnet.tm.injective.network:443
+--node=https://testnet.sentry.tm.injective.network:443
 ```
 
 ```sh
@@ -94,12 +97,12 @@ yes 12345678 | injectived tx wasm execute $CONTRACT "$START_ROUND" \
 --from=$(echo $INJ_ADDRESS) \
 --chain-id="injective-888" \
 --yes --fees=1000000000000000inj --gas=2000000 \
---node=https://k8s.testnet.tm.injective.network:443 \
+--node=https://testnet.sentry.tm.injective.network:443 \
 --output json
 
 ROUND='{"round":{"round_id": 2}}'
 injectived query wasm contract-state smart $CONTRACT "$ROUND" \
---node=https://k8s.testnet.tm.injective.network:443 \
+--node=https://testnet.sentry.tm.injective.network:443 \
 --output json
 ```
 

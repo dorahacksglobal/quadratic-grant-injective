@@ -18,6 +18,8 @@ use crate::{
     state::{Project, ProjectStatus, Round, RoundStatus},
 };
 
+const INJ_DECIMALS: u32 = 18;
+
 pub struct QGContract<'a> {
     pub(crate) owner: Item<'a, Addr>,
     pub(crate) admins: Map<'a, &'a Addr, Empty>,
@@ -359,17 +361,21 @@ impl QGContract<'_> {
         let mut total_area = 0;
 
         let denom = round.donation_denom.clone();
-        let denom_metadata = deps.querier.query_denom_metadata(&denom).unwrap();
 
-        let mut denom_unit: Option<DenomUnit> = None;
-        for unit in denom_metadata.denom_units {
-            if unit.denom == denom_metadata.display {
-                denom_unit = Some(unit);
-                break;
+        let decimals = if denom == "inj" {
+            INJ_DECIMALS // hardcode for INJ
+        } else {
+            let denom_metadata = deps.querier.query_denom_metadata(&denom).unwrap();
+
+            let mut denom_unit: Option<DenomUnit> = None;
+            for unit in denom_metadata.denom_units {
+                if unit.denom == denom_metadata.display {
+                    denom_unit = Some(unit);
+                    break;
+                }
             }
-        }
-
-        let decimals = denom_unit.unwrap().exponent;
+            denom_unit.unwrap().exponent
+        };
 
         for (project_id, vote) in project_ids.iter().zip(amounts.iter()) {
             let amount = vote.u128();
@@ -399,11 +405,14 @@ impl QGContract<'_> {
             match votes {
                 Some(votes) => {
                     old_votes = votes;
-                    new_votes = new_votes  + old_votes;
+                    new_votes = new_votes + old_votes;
                 }
                 None => {}
             }
-            deps.api.debug(&format!("old_votes: {} new_votes: {}", old_votes, new_votes));
+            deps.api.debug(&format!(
+                "old_votes: {} new_votes: {}",
+                old_votes, new_votes
+            ));
             self.votes.save(
                 deps.storage,
                 (&round_id.to_string(), &project_id.to_string(), &info.sender),
@@ -412,13 +421,15 @@ impl QGContract<'_> {
 
             let old_area = math::sqrt(old_votes * 100); // times 100 to avoid float, scale area by 10
             let new_area = math::sqrt(new_votes * 100);
-            deps.api.debug(&format!("old_area: {} new_area: {}", old_area, new_area));
+            deps.api
+                .debug(&format!("old_area: {} new_area: {}", old_area, new_area));
 
             let area_diff = (new_area * weight / 10 - old_area) as u128; // adjust by weight, 10 means 1.0, div 10 to get the real weight
 
             project.area = project.area + area_diff;
             total_area = total_area + area_diff;
-            deps.api.debug(&format!("total_area inner: {} {}", total_area, area_diff));
+            deps.api
+                .debug(&format!("total_area inner: {} {}", total_area, area_diff));
 
             self.projects.save(
                 deps.storage,
@@ -448,6 +459,7 @@ impl QGContract<'_> {
                 Event::new("weighted_batch_vote")
                     .add_attribute("voter", info.sender)
                     .add_attribute("round_id", round_id.to_string())
+                    .add_attribute("vcdora", vcdora.to_string())
                     .add_attribute(
                         "projects",
                         format!(
